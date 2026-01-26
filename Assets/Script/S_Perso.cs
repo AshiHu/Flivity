@@ -12,20 +12,17 @@ public class PlayerMovementCustomKeys : MonoBehaviour
     [Header("Glissade")]
     public float slideSpeed = 15f;
     public float slideDuration = 0.8f;
-    private bool isSliding = false;
+    public bool isSliding = false; // Mis en public pour ton script de FOV
     private Vector3 slideDirection;
 
     [Header("Configuration des Touches")]
-    [Tooltip("L'axe vertical (Z/S ou W/S)")]
     public string verticalAxis = "Vertical";
-    [Tooltip("L'axe horizontal (Q/D ou A/D)")]
     public string horizontalAxis = "Horizontal";
-
     public KeyCode jumpKey = KeyCode.Space;
     public KeyCode slideKey = KeyCode.LeftControl;
 
     [Header("Détection Sol")]
-    public float groundCheckRadius = 0.4f;
+    public float groundCheckDistance = 0.2f; // Distance du rayon sous les pieds
     public LayerMask groundLayer;
 
     [Header("Références")]
@@ -42,14 +39,20 @@ public class PlayerMovementCustomKeys : MonoBehaviour
     {
         if (gravityManager == null) return;
 
+        // On récupère la direction du bas selon ton GravityManager
         Vector3 gravityDir = gravityManager.gravityDirection.normalized;
         Vector3 playerUp = -gravityDir;
 
-        // --- DÉTECTION DU SOL ---
-        Vector3 spherePosition = transform.position + (gravityDir * (controller.height / 2f));
+        // --- DÉTECTION DU SOL (PIEDS UNIQUEMENT) ---
         if (jumpTimer <= 0)
         {
-            isGrounded = Physics.CheckSphere(spherePosition, groundCheckRadius, groundLayer);
+            // On lance un rayon qui part du centre du perso vers ses pieds
+            // On le fait dépasser un tout petit peu de la capsule (0.1f de marge)
+            float rayLength = (controller.height / 2f) + groundCheckDistance;
+            isGrounded = Physics.Raycast(transform.position, gravityDir, rayLength, groundLayer);
+
+            // Debug pour voir le rayon dans la scène
+            Debug.DrawRay(transform.position, gravityDir * rayLength, isGrounded ? Color.green : Color.red);
         }
         else
         {
@@ -68,11 +71,10 @@ public class PlayerMovementCustomKeys : MonoBehaviour
             velocity += gravityDir * -gravityValue * Time.deltaTime;
         }
 
-        // --- INPUTS VIA AXES (Évite le bug AZERTY/QWERTY) ---
+        // --- INPUTS ---
         float inputX = Input.GetAxisRaw(horizontalAxis);
         float inputZ = Input.GetAxisRaw(verticalAxis);
 
-        // --- CALCUL DU MOUVEMENT ---
         Vector3 moveForward = Vector3.ProjectOnPlane(transform.forward, gravityDir).normalized;
         Vector3 moveRight = Vector3.ProjectOnPlane(transform.right, gravityDir).normalized;
         Vector3 move = (moveRight * inputX + moveForward * inputZ).normalized;

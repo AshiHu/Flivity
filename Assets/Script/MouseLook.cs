@@ -2,11 +2,19 @@ using UnityEngine;
 
 public class MouseLook : MonoBehaviour
 {
-    public Transform playerBody;      // Le corps du joueur (Parent)
-    public Transform cameraTransform;  // La caméra (Enfant)
+    public Transform playerBody;
+    public Transform cameraTransform;
     public float mouseSensitivity = 2f;
 
-    private float xRotation = 0f;
+    [Header("Paramètres de Smooth")]
+    public float smoothSpeed = 15f;
+
+    private float xRotation = 0f; // Haut/Bas
+    private float yRotation = 0f; // Gauche/Droite
+
+    // Variables pour le lissage
+    private float smoothX = 0f;
+    private float smoothY = 0f;
 
     void Start()
     {
@@ -16,17 +24,24 @@ public class MouseLook : MonoBehaviour
 
     void Update()
     {
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+        // 1. Récupération brute des entrées souris
+        float targetMouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
+        float targetMouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 
-        // 1. Rotation Horizontale : On tourne autour de l'axe Y LOCAL du joueur.
-        // C'est ça qui empêche de se retrouver la tête à l'envers.
-        playerBody.Rotate(Vector3.up * mouseX);
+        // 2. Lissage des valeurs d'entrée (Le "Smooth")
+        // On lisse les nombres, pas encore les rotations, pour ne pas entrer en conflit avec la gravité
+        smoothX = Mathf.Lerp(smoothX, targetMouseX, Time.deltaTime * smoothSpeed);
+        smoothY = Mathf.Lerp(smoothY, targetMouseY, Time.deltaTime * smoothSpeed);
 
-        // 2. Rotation Verticale : On incline la caméra localement
-        xRotation -= mouseY;
+        // 3. Rotation Horizontale (Gauche/Droite)
+        // On applique la rotation sur l'axe UP local du joueur (géré par le GravityManager)
+        playerBody.Rotate(Vector3.up * smoothX);
+
+        // 4. Rotation Verticale (Haut/Bas)
+        xRotation -= smoothY;
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
+        // On applique uniquement la rotation X locale pour ne pas écraser les changements du GravityManager
         cameraTransform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
     }
 }

@@ -12,7 +12,7 @@ public class PlayerMovementCustomKeys : MonoBehaviour
     [Header("Glissade")]
     public float slideSpeed = 15f;
     public float slideDuration = 0.8f;
-    public bool isSliding = false; // Mis en public pour ton script de FOV
+    public bool isSliding = false;
     private Vector3 slideDirection;
 
     [Header("Configuration des Touches")]
@@ -22,7 +22,7 @@ public class PlayerMovementCustomKeys : MonoBehaviour
     public KeyCode slideKey = KeyCode.LeftControl;
 
     [Header("Détection Sol")]
-    public float groundCheckDistance = 0.2f; // Distance du rayon sous les pieds
+    public float groundCheckDistance = 0.2f;
     public LayerMask groundLayer;
 
     [Header("Références")]
@@ -39,19 +39,24 @@ public class PlayerMovementCustomKeys : MonoBehaviour
     {
         if (gravityManager == null) return;
 
-        // On récupère la direction du bas selon ton GravityManager
         Vector3 gravityDir = gravityManager.gravityDirection.normalized;
         Vector3 playerUp = -gravityDir;
+
+        // --- FIX : RÉALIGNEMENT DU CORPS ---
+        // On aligne le "haut" du joueur avec l'opposé de la gravité.
+        // Cela empêche de rentrer dans les murs lors des changements de surface.
+        if (transform.up != playerUp)
+        {
+            Quaternion targetRotation = Quaternion.FromToRotation(transform.up, playerUp) * transform.rotation;
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+        }
 
         // --- DÉTECTION DU SOL (PIEDS UNIQUEMENT) ---
         if (jumpTimer <= 0)
         {
-            // On lance un rayon qui part du centre du perso vers ses pieds
-            // On le fait dépasser un tout petit peu de la capsule (0.1f de marge)
             float rayLength = (controller.height / 2f) + groundCheckDistance;
+            // On part d'un peu plus haut que le centre pour être sûr
             isGrounded = Physics.Raycast(transform.position, gravityDir, rayLength, groundLayer);
-
-            // Debug pour voir le rayon dans la scène
             Debug.DrawRay(transform.position, gravityDir * rayLength, isGrounded ? Color.green : Color.red);
         }
         else
